@@ -23,7 +23,7 @@ int choose_race(){  //选择种族，0代表暗夜精灵（NE），1代表兽族（ORC）
 }
 
 void ai(my_info info,Map map,Action& cmd){
-	static int ending=0,dayeguai=0,yeguai_hp=2000,yeguai_alive=1,moved=0;
+	static int ending=0,dayeguai=1,yeguai_hp=2000,yeguai_alive=1,moved=0;
 	int i,js=0,m;
 	Hero my_hero=info.my_hero;  //获取我方英雄
 	//跨回合信息更新****************************************************
@@ -35,7 +35,7 @@ void ai(my_info info,Map map,Action& cmd){
 		cmd.pos=att_unit(info.enemy_units,my_hero,info.num_enemy_units);return;
 	}
 	//前期策略**********************************************************
-	if (my_hero.level<=8)
+	if (my_hero.level<=10)
 	{
 		//技能策略******************************************************
 		if(my_hero.qui.cd_next==0 && my_hero.qui.mag_cos<=my_hero.mag)	//技能可释放时
@@ -115,7 +115,7 @@ void ai(my_info info,Map map,Action& cmd){
 		}
 	}
 	//中期
-	if(my_hero.level<=13)
+	if(my_hero.level<=14)
 	{
 		if(my_hero.qui.cd_next==0 && my_hero.qui.mag_cos<=my_hero.mag)	//技能可释放时
 		{
@@ -142,8 +142,8 @@ void ai(my_info info,Map map,Action& cmd){
 		//攻击策略
 		if (in_range(my_hero.pos,point(73,3),8.0)==0)
 		{
-			if (my_hero.hp/(60-my_hero.def)>yeguai_hp/(my_hero.atk-20) && yeguai_alive==1  && \
-				/*in_range(nst_enemy_unit(info.enemy_units,my_hero,info.num_enemy_units).pos,my_hero.pos,5.0)==0 && */my_hero.hp>=my_hero.Hp*0.8)
+			if (/*my_hero.hp/(60-my_hero.def)>yeguai_hp/(my_hero.atk-20) &&*/ yeguai_alive==1  && \
+				in_range(nst_enemy_unit(info.enemy_units,my_hero,info.num_enemy_units).pos,my_hero.pos,5.0)==0 && my_hero.hp>=my_hero.Hp*0.8)
 				dayeguai=1;
 		}
 		if (dayeguai==0)
@@ -199,7 +199,7 @@ void ai(my_info info,Map map,Action& cmd){
 			{
 				yeguai_hp=yeguai().hp;
 			}
-			if ((my_hero.hp<=200 && info.enemy_hero_vsb==1 && in_range(my_hero.pos,info.enemy_hero.pos,5)) || yeguai_alive==0)			//如果被打死了，改血量
+			if ((my_hero.hp<=200 && ((info.enemy_hero_vsb==1 && in_range(my_hero.pos,info.enemy_hero.pos,5)) || my_hero.level<12)) || yeguai_alive==0)			//如果被打死了，改血量
 			{
 				dayeguai=0;
 				cmd.action=Action::MOVE;
@@ -461,6 +461,24 @@ Tower nst_tower(Tower enemy[],Hero hero,int num)
 
 int dying_unit(Unit enemy[],Hero my_hero,int e_num)
 {
+	if(temp_info.enemy_hero_vsb && in_range(my_hero.pos,temp_info.enemy_hero.pos,my_hero.rng) 
+		&& temp_info.enemy_hero.hp <= my_hero.atk-temp_info.enemy_hero.def)
+		return 1;
+	for(int i=0;i<temp_info.num_enemy_towers;i++)
+	{
+		if(temp_info.enemy_towers[i].vsb && in_range(temp_info.enemy_towers[i].pos,my_hero.pos,5.0)==1 
+			&& temp_info.enemy_towers[i].hp<=my_hero.atk-temp_info.enemy_towers[i].def)
+			return 1;
+	}
+	for(int i=0;i<temp_info.num_my_towers;i++)
+	{
+		if(in_range(temp_info.my_towers[i].pos,my_hero.pos,5.0)==1 
+			&& temp_info.my_towers[i].hp<=my_hero.atk-temp_info.my_towers[i].def
+			&& in_range(temp_info.enemy_hero.pos,temp_info.my_towers[i].pos,6.0))
+			return 1;
+	}
+
+	int rnd=10000,fst_num=-1;
 	for (int type=2;type>=0;type--)
 	{
 		for(int i=0;i<e_num;i++)
@@ -470,18 +488,41 @@ int dying_unit(Unit enemy[],Hero my_hero,int e_num)
 			if (enemy[i].status==type && enemy[i].hp <= (my_hero.atk-enemy[i].def))
 				return 1;
 		}
-	}
-	for (int type=2;type>=0;type--)
-	{
-		for(int i=0;i<temp_info.num_my_units;i++)
+		for(int i=0;i<e_num;i++)
 		{
-			if (in_range(my_hero.pos,temp_info.my_units[i].pos,5.0)==0)
-				continue;
-			if (temp_info.my_units[i].status==type && temp_info.my_units[i].hp <= (my_hero.atk-temp_info.my_units[i].def))
+			if (enemy[i].status==type)
+			{
+				if (in_range(my_hero.pos,enemy[i].pos,5.0)==0)
+					continue;
+				int j=0;
+				for (j=0;j<history_info.num_enemy_units;j++)
+				{
+					if (history_info.enemy_units[j].number == temp_info.enemy_units[i].number)
+						break;
+				}
+				if (j==history_info.num_enemy_units)
+					continue;
+				if ((history_info.enemy_units[j].hp-temp_info.enemy_units[i].hp)!=0 && temp_info.enemy_units[i].hp/(history_info.enemy_units[j].hp-temp_info.enemy_units[i].hp)<=rnd)
+				{
+					rnd=temp_info.enemy_units[i].hp/(history_info.enemy_units[j].hp-temp_info.enemy_units[i].hp);
+					fst_num=i;
+					if (rnd <= 1)
+						return 1;
+				}
+			}
+		}
+		for (int i=0;i<temp_info.num_my_units;i++)
+		{
+			if (in_range(my_hero.pos,temp_info.my_units[i].pos,5.0) 
+				&& temp_info.my_units[i].status==type 
+				&& temp_info.my_units[i].hp <= (my_hero.atk-temp_info.my_units[i].def)
+				&& temp_info.enemy_hero_vsb
+				&& in_range(temp_info.enemy_hero.pos,temp_info.my_units[i].pos,6.0))
 				return 1;
 		}
 	}
-	return 0;
+	if (fst_num==-1) return 0;
+	else return 0;
 }
 
 int hero_cmp()
