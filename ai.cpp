@@ -92,13 +92,21 @@ void ai(my_info info,Map map,Action& cmd){
 		}
 		if(in_range(my_hero.pos,nst_enemy_unit(info.enemy_units,my_hero,info.num_enemy_units).pos,5.0)==0)	//¹¥»÷·¶Î§ÖÐÃ»ÓÐµÐ·½µ¥Î»
 		{
-			if(info.enemy_hero_vsb==true && in_range(my_hero.pos,info.enemy_hero.pos,my_hero.rng)==1)		//µÐ·½Ó¢ÐÛÔÚ¹¥»÷·¶Î§ÄÚ
+			if(info.enemy_hero_vsb==true && in_range(my_hero.pos,info.enemy_hero.pos,6.0)==1)		//µÐ·½Ó¢ÐÛÔÚÊÓÒ°ÄÚ
 			{
 				if (hero_cmp()==1)		//ÎÒ·½ÎÞ´óÁÓÊÆ
-				{
-					cmd.action=Action::ATTACK;
-					cmd.pos=info.enemy_hero.pos;return;		//¹¥»÷¶Ô·½Ó¢ÐÛ
-				}
+					{
+						if (in_range(my_hero.pos,info.enemy_hero.pos,5.0)==1)
+						{
+						cmd.action=Action::ATTACK;
+						cmd.pos=info.enemy_hero.pos;return;		//¹¥»÷¶Ô·½Ó¢ÐÛ
+						}
+						else
+						{
+							cmd.action=Action::MOVE;
+							cmd.pos=info.enemy_hero.pos;
+						}
+					}
 				else
 				{
 					cmd.action=Action::MOVE;
@@ -171,12 +179,20 @@ void ai(my_info info,Map map,Action& cmd){
 			}
 			if(in_range(my_hero.pos,nst_enemy_unit(info.enemy_units,my_hero,info.num_enemy_units).pos,5.0)==0)	//¹¥»÷·¶Î§ÖÐÃ»ÓÐµÐ·½µ¥Î»
 			{
-				if(info.enemy_hero_vsb==true && in_range(my_hero.pos,info.enemy_hero.pos,my_hero.rng)==1)		//µÐ·½Ó¢ÐÛÔÚ¹¥»÷·¶Î§ÄÚ
+				if(info.enemy_hero_vsb==true && in_range(my_hero.pos,info.enemy_hero.pos,6.0)==1)		//µÐ·½Ó¢ÐÛÔÚÊÓÒ°ÄÚ
 				{
 					if (hero_cmp()==1)		//ÎÒ·½ÎÞ´óÁÓÊÆ
 					{
+						if (in_range(my_hero.pos,info.enemy_hero.pos,5.0)==1)
+						{
 						cmd.action=Action::ATTACK;
 						cmd.pos=info.enemy_hero.pos;return;		//¹¥»÷¶Ô·½Ó¢ÐÛ
+						}
+						else
+						{
+							cmd.action=Action::MOVE;
+							cmd.pos=info.enemy_hero.pos;
+						}
 					}
 					else
 					{
@@ -365,6 +381,7 @@ Unit nst_enemy_unit(Unit enemy[],Hero hero,int num)		//×î½üµÐ·½µ¥Î»
 point att_unit(Unit enemy[],Hero my_hero,int e_num)		//Ô¤¶¨¹¥»÷µ¥Î»£¨ÔÝ¶¨×î½üµ¥Î»£©
 {
 	//return(nst_enemy_unit(enemy,my_hero,e_num)).pos;
+	int min_hp=10000;
 	if(temp_info.enemy_hero_vsb && in_range(my_hero.pos,temp_info.enemy_hero.pos,my_hero.rng) 
 		&& temp_info.enemy_hero.hp <= my_hero.atk-temp_info.enemy_hero.def)
 		return temp_info.enemy_hero.pos;
@@ -412,9 +429,8 @@ point att_unit(Unit enemy[],Hero my_hero,int e_num)		//Ô¤¶¨¹¥»÷µ¥Î»£¨ÔÝ¶¨×î½üµ¥Î
 				}
 				if (j==history_info.num_enemy_units)
 					continue;
-				if ((history_info.enemy_units[j].hp-temp_info.enemy_units[i].hp)!=0 && temp_info.enemy_units[i].hp/(history_info.enemy_units[j].hp-temp_info.enemy_units[i].hp)<=rnd)
+				if (temp_info.enemy_units[i].hp<=min_hp)
 				{
-					rnd=temp_info.enemy_units[i].hp/(history_info.enemy_units[j].hp-temp_info.enemy_units[i].hp);
 					fst_num=i;
 				}
 			}
@@ -461,24 +477,6 @@ Tower nst_tower(Tower enemy[],Hero hero,int num)
 
 int dying_unit(Unit enemy[],Hero my_hero,int e_num)
 {
-	if(temp_info.enemy_hero_vsb && in_range(my_hero.pos,temp_info.enemy_hero.pos,my_hero.rng) 
-		&& temp_info.enemy_hero.hp <= my_hero.atk-temp_info.enemy_hero.def)
-		return 1;
-	for(int i=0;i<temp_info.num_enemy_towers;i++)
-	{
-		if(temp_info.enemy_towers[i].vsb && in_range(temp_info.enemy_towers[i].pos,my_hero.pos,5.0)==1 
-			&& temp_info.enemy_towers[i].hp<=my_hero.atk-temp_info.enemy_towers[i].def)
-			return 1;
-	}
-	for(int i=0;i<temp_info.num_my_towers;i++)
-	{
-		if(in_range(temp_info.my_towers[i].pos,my_hero.pos,5.0)==1 
-			&& temp_info.my_towers[i].hp<=my_hero.atk-temp_info.my_towers[i].def
-			&& in_range(temp_info.enemy_hero.pos,temp_info.my_towers[i].pos,6.0))
-			return 1;
-	}
-
-	int rnd=10000,fst_num=-1;
 	for (int type=2;type>=0;type--)
 	{
 		for(int i=0;i<e_num;i++)
@@ -488,41 +486,18 @@ int dying_unit(Unit enemy[],Hero my_hero,int e_num)
 			if (enemy[i].status==type && enemy[i].hp <= (my_hero.atk-enemy[i].def))
 				return 1;
 		}
-		for(int i=0;i<e_num;i++)
+	}
+	for (int type=2;type>=0;type--)
+	{
+		for(int i=0;i<temp_info.num_my_units;i++)
 		{
-			if (enemy[i].status==type)
-			{
-				if (in_range(my_hero.pos,enemy[i].pos,5.0)==0)
-					continue;
-				int j=0;
-				for (j=0;j<history_info.num_enemy_units;j++)
-				{
-					if (history_info.enemy_units[j].number == temp_info.enemy_units[i].number)
-						break;
-				}
-				if (j==history_info.num_enemy_units)
-					continue;
-				if ((history_info.enemy_units[j].hp-temp_info.enemy_units[i].hp)!=0 && temp_info.enemy_units[i].hp/(history_info.enemy_units[j].hp-temp_info.enemy_units[i].hp)<=rnd)
-				{
-					rnd=temp_info.enemy_units[i].hp/(history_info.enemy_units[j].hp-temp_info.enemy_units[i].hp);
-					fst_num=i;
-					if (rnd <= 1)
-						return 1;
-				}
-			}
-		}
-		for (int i=0;i<temp_info.num_my_units;i++)
-		{
-			if (in_range(my_hero.pos,temp_info.my_units[i].pos,5.0) 
-				&& temp_info.my_units[i].status==type 
-				&& temp_info.my_units[i].hp <= (my_hero.atk-temp_info.my_units[i].def)
-				&& temp_info.enemy_hero_vsb
-				&& in_range(temp_info.enemy_hero.pos,temp_info.my_units[i].pos,6.0))
+			if (in_range(my_hero.pos,temp_info.my_units[i].pos,5.0)==0)
+				continue;
+			if (temp_info.my_units[i].status==type && temp_info.my_units[i].hp <= (my_hero.atk-temp_info.my_units[i].def))
 				return 1;
 		}
 	}
-	if (fst_num==-1) return 0;
-	else return 0;
+	return 0;
 }
 
 int hero_cmp()
