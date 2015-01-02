@@ -23,7 +23,7 @@ int choose_race(){  //选择种族，0代表暗夜精灵（NE），1代表兽族（ORC）
 }
 
 void ai(my_info info,Map map,Action& cmd){
-	static int ending=0,dayeguai=1,yeguai_hp=2000,yeguai_alive=1,moved=0;
+	static int ending=0,dayeguai=1,yeguai_hp=2000,yeguai_alive=1;
 	int i,js=0,m;
 	Hero my_hero=info.my_hero;  //获取我方英雄
 	//跨回合信息更新****************************************************
@@ -105,6 +105,7 @@ void ai(my_info info,Map map,Action& cmd){
 						{
 							cmd.action=Action::MOVE;
 							cmd.pos=info.enemy_hero.pos;
+							return;
 						}
 					}
 				else
@@ -192,6 +193,7 @@ void ai(my_info info,Map map,Action& cmd){
 						{
 							cmd.action=Action::MOVE;
 							cmd.pos=info.enemy_hero.pos;
+							return;
 						}
 					}
 					else
@@ -215,7 +217,7 @@ void ai(my_info info,Map map,Action& cmd){
 			{
 				yeguai_hp=yeguai().hp;
 			}
-			if ((my_hero.hp<=200 && ((info.enemy_hero_vsb==1 && in_range(my_hero.pos,info.enemy_hero.pos,5)) || my_hero.level<12)) || yeguai_alive==0)			//如果被打死了，改血量
+			if ((my_hero.hp<=200 && info.enemy_hero_vsb==1 && in_range(my_hero.pos,info.enemy_hero.pos,5)) || yeguai_alive==0)			//如果被打死了，改血量
 			{
 				dayeguai=0;
 				cmd.action=Action::MOVE;
@@ -250,9 +252,48 @@ void ai(my_info info,Map map,Action& cmd){
 					return;
 				}
 			}
-			if (in_range(my_hero.pos,info.enemy_hero.pos,6.0)==1)
+			if (in_range(my_hero.pos,info.enemy_hero.pos,5.0)==1)
 			{
-				if (yeguai().id==-1 && my_hero.hp/((history_info.my_hero.hp-my_hero.hp)<=0?1:(history_info.my_hero.hp-my_hero.hp))\
+				if (yeguai().pos != my_hero.pos && in_range(yeguai().pos,my_hero.pos,5))
+				{
+					if (yeguai().atkpos == info.enemy_hero.pos)
+					{
+						if (info.enemy_hero.hp <= (my_hero.atk + yeguai().atk - info.enemy_hero.def))
+						{
+							cmd.action=Action::ATTACK;
+							cmd.pos=info.enemy_hero.pos;
+							return;
+						}
+						else
+						{
+							cmd.action=Action::ATTACK;
+							cmd.pos=yeguai().pos;
+							return;
+						}
+					}
+					else
+					{
+						if (info.enemy_hero.hp <=(my_hero.atk - info.enemy_hero.def))
+						{
+							cmd.action=Action::ATTACK;
+							cmd.pos=info.enemy_hero.pos;
+							return;
+						}
+						else
+						{
+							cmd.action=Action::ATTACK;
+							cmd.pos=yeguai().pos;
+							return;
+						}
+					}
+				}
+				else
+				{
+					cmd.action=Action::ATTACK;
+					cmd.pos=info.enemy_hero.pos;
+					return;
+				}
+				/*if (yeguai().id==-1 && my_hero.hp/((history_info.my_hero.hp-my_hero.hp)<=0?1:(history_info.my_hero.hp-my_hero.hp))\
 				>(yeguai().hp/(my_hero.atk-yeguai().def)))
 				{
 					cmd.action==Action::ATTACK;
@@ -276,7 +317,7 @@ void ai(my_info info,Map map,Action& cmd){
 					cmd.action=Action::MOVE;
 					cmd.pos=info.enemy_hero.pos;
 					return;
-				}
+				}*/
 			}
 			/*if (hero_cmp()==1)
 			{
@@ -326,9 +367,9 @@ void ai(my_info info,Map map,Action& cmd){
 				cmd.action=Action::MAGIC;return;
 			}
 		}
-		if (my_hero.pos==(my_hero.id==0?point(73,20):point(55,2)))
-			moved=1;
-		if (moved==0)
+		int pos_total;
+		pos_total = my_hero.pos.xp + my_hero.pos.yp;
+		if (my_hero.id==0 ? (pos_total<93) : (pos_total>57))
 		{
 			cmd.action=Action::MOVE;
 			cmd.pos=my_hero.id==0?point(73,20):point(55,2);
@@ -506,7 +547,9 @@ int hero_cmp()
 		return 1;		//上回合未见对方英雄，或上回合英雄没有掉血，或者我没有掉血，先打一下
 	else
 	{
-		if(temp_info.my_hero.hp/(history_info.my_hero.hp-temp_info.my_hero.hp)>=temp_info.enemy_hero.hp/(history_info.enemy_hero.hp-temp_info.enemy_hero.hp))
+		if(temp_info.my_hero.hp/(history_info.my_hero.hp-temp_info.my_hero.hp)>=
+			temp_info.enemy_hero.hp/((history_info.enemy_hero.hp-temp_info.enemy_hero.hp)<=0?\
+			(temp_info.my_hero.atk - temp_info.enemy_hero.def):(history_info.enemy_hero.hp-temp_info.enemy_hero.hp)))
 			return 1;		//我方英雄占优
 		else
 			return 0;		//对方英雄占优
